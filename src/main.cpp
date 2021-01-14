@@ -18,5 +18,5 @@ int main(int argc, char *argv[])
   w.RosInit(nh);
   w.show();
 
-   return a.exec();
+  return a.exec();
 }

@@ -22,6 +22,7 @@
 #include <ctime>
 #include <chrono>
 #include <string.h>
+#include <stdbool.h>
 #define R2D 180/PI
 #define D2R PI/180
 #define POWER_CTR_DELAY 200000
@@ -64,6 +65,7 @@ private slots:
 
 signals:
   void setThreadFinished(bool);
+
 private:
   QMutex mutex;
   ROSThread *my_ros_;
