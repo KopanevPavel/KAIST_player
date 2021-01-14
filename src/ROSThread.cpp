@@ -93,6 +93,16 @@ void ROSThread::ros_initialize(ros::NodeHandle &n)
 {
   nh_ = n;
 
+  if (nh_.getParam("/file_player/include_LIDAR_data", include_LIDAR_data_))
+  {
+    cout << "LIDAR flag set" << endl;
+  }
+
+  if (nh_.getParam("/file_player/publish_TF", publish_TF_))
+  {
+    cout << "TF flag set" << endl;
+  }
+  
   pre_timer_stamp_ = ros::Time::now().toNSec();
   timer_ = nh_.createTimer(ros::Duration(0.0001), boost::bind(&ROSThread::TimerCallback, this, _1));
 
@@ -832,10 +842,20 @@ void ROSThread::Ready()
   gps_thread_.active_ = true;
   vrs_thread_.active_ = true;
   imu_thread_.active_ = true;
-  velodyne_left_thread_.active_ = true;
-  velodyne_right_thread_.active_ = true;
-  sick_back_thread_.active_ = true;
-  sick_middle_thread_.active_ = true;
+  if (include_LIDAR_data_)
+  {
+    velodyne_left_thread_.active_ = true;
+    velodyne_right_thread_.active_ = true;
+    sick_back_thread_.active_ = true;
+    sick_middle_thread_.active_ = true;
+  }
+  else 
+  {
+    velodyne_left_thread_.active_ = false;
+    velodyne_right_thread_.active_ = false;
+    sick_back_thread_.active_ = false;
+    sick_middle_thread_.active_ = false;
+  }
   stereo_thread_.active_ = true;
   omni_thread_.active_ = true;
 
@@ -846,10 +866,13 @@ void ROSThread::Ready()
   gps_thread_.thread_ = std::thread(&ROSThread::GpsThread,this);
   vrs_thread_.thread_ = std::thread(&ROSThread::VrsThread,this);
   imu_thread_.thread_ = std::thread(&ROSThread::ImuThread,this);
-  velodyne_left_thread_.thread_ = std::thread(&ROSThread::VelodyneLeftThread,this);
-  velodyne_right_thread_.thread_ = std::thread(&ROSThread::VelodyneRightThread,this);
-  sick_back_thread_.thread_ = std::thread(&ROSThread::SickBackThread,this);
-  sick_middle_thread_.thread_ = std::thread(&ROSThread::SickMiddleThread,this);
+  if (include_LIDAR_data_)
+  {
+    velodyne_left_thread_.thread_ = std::thread(&ROSThread::VelodyneLeftThread,this);
+    velodyne_right_thread_.thread_ = std::thread(&ROSThread::VelodyneRightThread,this);
+    sick_back_thread_.thread_ = std::thread(&ROSThread::SickBackThread,this);
+    sick_middle_thread_.thread_ = std::thread(&ROSThread::SickMiddleThread,this);
+  }
   stereo_thread_.thread_ = std::thread(&ROSThread::StereoThread,this);
   omni_thread_.thread_ = std::thread(&ROSThread::OmniThread,this);
 

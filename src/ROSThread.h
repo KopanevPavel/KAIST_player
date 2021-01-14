@@ -142,6 +142,9 @@ private:
     bool stereo_active_;
     bool omni_active_;
 
+    bool include_LIDAR_data_;
+    bool publish_TF_;
+
     ros::Subscriber start_sub_;
     ros::Subscriber stop_sub_;
 

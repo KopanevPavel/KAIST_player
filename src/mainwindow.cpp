@@ -73,15 +73,6 @@ MainWindow::~MainWindow()
 
 void MainWindow::RosInit(ros::NodeHandle &n)
 {
-
-  bool include_LIDAR_data, publish_TF;
-  if (n.getParam("/include_LIDAR_data", include_LIDAR_data))
-  {}
-
-  if (n.getParam("/publish_TF", publish_TF))
-  {}
-  
-  std::cout << include_LIDAR_data << std::endl;
   my_ros_->ros_initialize(n);
 }
 
