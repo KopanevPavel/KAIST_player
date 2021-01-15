@@ -2,6 +2,11 @@
 
 #include "ROSThread.h"
 
+#include <tf2/LinearMath/Quaternion.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <geometry_msgs/TransformStamped.h>
+#include <turtlesim/Pose.h>
+
 using namespace std;
 
 ROSThread::ROSThread(QObject *parent, QMutex *th_mutex) :
@@ -364,7 +369,7 @@ void ROSThread::Ready()
       odom.twist.covariance[35] = 1;
 
       //set the velocity
-      odom.child_frame_id = "base_link";
+      odom.child_frame_id = "wheel_odometry";
       odom.twist.twist.linear.x = vx;
       odom.twist.twist.linear.y = vy;
       odom.twist.twist.angular.z = vth;
@@ -409,6 +414,7 @@ void ROSThread::Ready()
   double cov[9];
   sensor_msgs::NavSatFix gps_data;
   gps_data_.clear();
+  //cout << fscanf(fp,"%ld,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",&stamp,&latitude,&longitude,&altitude,&cov[0],&cov[1],&cov[2],&cov[3],&cov[4],&cov[5],&cov[6],&cov[7],&cov[8]) << endl;
   while(fscanf(fp,"%ld,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",&stamp,&latitude,&longitude,&altitude,&cov[0],&cov[1],&cov[2],&cov[3],&cov[4],&cov[5],&cov[6],&cov[7],&cov[8]) == 13){
     gps_data.header.stamp.fromNSec(stamp);
     gps_data.header.frame_id = "gps";
@@ -1028,16 +1034,40 @@ void ROSThread::EncoderThread()
     while(!encoder_thread_.data_queue_.empty()){
       auto data = encoder_thread_.pop();
       //process
+      //cout << "Encoder" << endl;
+      //cout << data << endl;
       if(encoder_data_.find(data) != encoder_data_.end()){
         encoder_pub_.publish(encoder_data_[data]);
         if(encoder_param_load_flag_){
           odometry_pub_.publish(odometry_data_[data]);
+
+          ROSThread::BroadcastTF2(odometry_data_[data],  "map","wheel_odometry");
         }
       }
 
     }
     if(encoder_thread_.active_ == false) return;
   }
+}
+
+template <typename T>
+void ROSThread::BroadcastTF2(T &msg, string header_frame_id, string child_frame_id)
+{
+    static tf2_ros::TransformBroadcaster br;
+    geometry_msgs::TransformStamped transformStamped;
+
+    transformStamped.header.stamp = msg.header.stamp;
+    transformStamped.header.frame_id = header_frame_id;
+    transformStamped.child_frame_id = child_frame_id;
+    transformStamped.transform.translation.x = msg.pose.pose.position.x;
+    transformStamped.transform.translation.y = msg.pose.pose.position.y;
+    transformStamped.transform.translation.z = msg.pose.pose.position.z;
+
+    transformStamped.transform.rotation.x = msg.pose.pose.orientation.x;
+    transformStamped.transform.rotation.y = msg.pose.pose.orientation.y;
+    transformStamped.transform.rotation.z = msg.pose.pose.orientation.z;
+    transformStamped.transform.rotation.w = msg.pose.pose.orientation.w;
+    br.sendTransform(transformStamped);
 }
 
 void ROSThread::FogThread()
@@ -1071,6 +1101,8 @@ void ROSThread::GpsThread()
     while(!gps_thread_.data_queue_.empty()){
       auto data = gps_thread_.pop();
       //process
+      //cout << "GPS" << endl;
+      //cout << data << endl;
       if(gps_data_.find(data) != gps_data_.end()){
         gps_pub_.publish(gps_data_[data]);
       }

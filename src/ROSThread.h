@@ -259,6 +259,9 @@ private:
 
     int GetDirList(string dir, vector<string> &files);
 
+    template <typename T>
+    void BroadcastTF2(T &msg, string header_frame_id, string child_frame_id);
+
 
 public slots:
 
