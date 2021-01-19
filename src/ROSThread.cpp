@@ -220,6 +220,7 @@ void ROSThread::Ready()
   while(fscanf(fp,"%ld,%s\n",&stamp,data_name) == 2){
 //    data_stamp_[stamp] = data_name;
     data_stamp_.insert( multimap<int64_t, string>::value_type(stamp, data_name));
+    //cout<<stamp<<data_name<<endl;
   }
   cout << "Stamp data is loaded" << endl;
   fclose(fp);
@@ -260,14 +261,7 @@ void ROSThread::Ready()
       boost::algorithm::split(vec, line, boost::is_any_of(","));
 
       stamp = boost::lexical_cast<long>(vec[0]);
-      altimeter_value = boost::lexical_cast<long>(vec[0]);
-
-      //stamp = std::stol(vec[0]);
-      //altimeter_value = std::stod(vec[1]);
-      //altimeter_value = std::atof(vec[1].c_str());
-
-      std::stringstream stream(vec[1]);
-      stream >> altimeter_value;
+      altimeter_value = boost::lexical_cast<double>(vec[1]);
 
       altimeter_data.header.stamp.fromNSec(stamp);
       altimeter_data.header.frame_id = "altimeter";
@@ -277,7 +271,6 @@ void ROSThread::Ready()
   }
   // Close the File
   dataFileAltimeter.close();
-
   cout << "Altimeter data is loaded" << endl;
 
   //Read encoder data
@@ -291,20 +284,24 @@ void ROSThread::Ready()
      vector<string> strs;
      boost::split(strs, str, boost::is_any_of(" "));
      if(!strs[1].compare("resolution:")){
-//       cout << strs[2] << endl;
-       encoder_resolution_ = std::stoi(strs[2]);
+         //cout << strs[2] << endl;
+         //encoder_resolution_ = std::stoi(strs[2]);
+         encoder_resolution_ = boost::lexical_cast<int>(strs[2]);
      }
      if(!strs[1].compare("left")){
-//       cout << strs[4] << endl;
-       encoder_left_diameter_ = std::stod(strs[4]);
+         //cout << strs[4] << endl;
+         //encoder_left_diameter_ = std::stod(strs[4]);
+         encoder_left_diameter_ = boost::lexical_cast<double>(strs[4]);
      }
      if(!strs[1].compare("right")){
-//       cout << strs[4] << endl;
-       encoder_right_diameter_ = std::stod(strs[4]);
+         //cout << strs[4] << endl;
+         //encoder_right_diameter_ = std::stod(strs[4]);
+         encoder_right_diameter_ = boost::lexical_cast<double>(strs[4]);
      }
      if(!strs[1].compare("wheel")){
-//       cout << strs[3] << endl;
-       encoder_wheel_base_ = std::stod(strs[3]);
+         //cout << strs[3] << endl;
+         //encoder_wheel_base_ = std::stod(strs[3]);
+         encoder_wheel_base_ = boost::lexical_cast<double>(strs[3]);
      }
    }
    if(encoder_resolution_ != 0){
@@ -459,26 +456,11 @@ void ROSThread::Ready()
   {
       std::vector<std::string> vec;
       boost::algorithm::split(vec, line, boost::is_any_of(","));
-      //cout<<"1:"<<vec[0]<<"2:"<<vec[1]<<endl;
 
       stamp = boost::lexical_cast<long>(vec[0]);
       d_roll = boost::lexical_cast<float>(vec[1]);
       d_pitch = boost::lexical_cast<float>(vec[2]);
       d_yaw = boost::lexical_cast<float>(vec[3]);
-
-      //stamp = std::stol(vec[0]);
-      //d_roll = std::stof(vec[1]);
-      //d_pitch = std::stof(vec[2]);
-      //d_yaw = std::stof(vec[3]);
-
-      cout<<stamp<<d_roll<<d_pitch<<d_yaw<<endl;
-
-      //std::stringstream stream1(vec[1]);
-      //stream1 >> d_roll;
-      //std::stringstream stream2(vec[2]);
-      //stream2 >> d_pitch;
-      //std::stringstream stream3(vec[3]);
-      //stream3 >> d_yaw;
 
       fog_data.header.stamp.fromNSec(stamp);
       fog_data.header.frame_id = "dsp1760";
@@ -524,15 +506,14 @@ void ROSThread::Ready()
   {
       std::vector<std::string> vec;
       boost::algorithm::split(vec, line, boost::is_any_of(","));
-      //cout<<"1:"<<vec[0]<<"2:"<<vec[1]<<endl
 
-      stamp = std::stol(vec[0]);
-      latitude = std::stod(vec[1]);
-      longitude = std::stod(vec[2]);
-      altitude = std::stod(vec[3]);
+      stamp = boost::lexical_cast<long>(vec[0]);
+      latitude = boost::lexical_cast<double>(vec[1]);
+      longitude = boost::lexical_cast<double>(vec[2]);
+      altitude = boost::lexical_cast<double>(vec[3]);
 
       for (int i = 0; i <= 8; i++) {
-          cov[i] = std::stod(vec[i+4]);
+          cov[i] = boost::lexical_cast<double>(vec[i+4]);
       }
 
       gps_data.header.stamp.fromNSec(stamp);
@@ -775,14 +756,14 @@ void ROSThread::Ready()
       int length = vec.size();
 
       if(length == 8){
-          stamp = std::stol(vec[0]);
-          q_x = std::stol(vec[1]);
-          q_y = std::stol(vec[2]);
-          q_z = std::stol(vec[3]);
-          q_w = std::stol(vec[4]);
-          x = std::stol(vec[5]);
-          y = std::stol(vec[6]);
-          z = std::stol(vec[7]);
+          stamp = boost::lexical_cast<long>(vec[0]);
+          q_x = boost::lexical_cast<double>(vec[1]);
+          q_y = boost::lexical_cast<double>(vec[2]);
+          q_z = boost::lexical_cast<double>(vec[3]);
+          q_w = boost::lexical_cast<double>(vec[4]);
+          x = boost::lexical_cast<double>(vec[5]);
+          y = boost::lexical_cast<double>(vec[6]);
+          z = boost::lexical_cast<double>(vec[7]);
 
           imu_data.header.stamp.fromNSec(stamp);
           imu_data.header.frame_id = "imu";
@@ -808,23 +789,23 @@ void ROSThread::Ready()
 
 
       }else if(length == 17){
-          stamp = std::stol(vec[0]);
-          q_x = std::stol(vec[1]);
-          q_y = std::stol(vec[2]);
-          q_z = std::stol(vec[3]);
-          q_w = std::stol(vec[4]);
-          x = std::stol(vec[5]);
-          y = std::stol(vec[6]);
-          z = std::stol(vec[7]);
-          g_x = std::stol(vec[8]);
-          g_y = std::stol(vec[9]);
-          g_z = std::stol(vec[10]);
-          a_x = std::stol(vec[11]);
-          a_y = std::stol(vec[12]);
-          a_z = std::stol(vec[13]);
-          m_x = std::stol(vec[14]);
-          m_y = std::stol(vec[15]);
-          m_z = std::stol(vec[16]);
+          stamp = boost::lexical_cast<long>(vec[0]);
+          q_x = boost::lexical_cast<double>(vec[1]);
+          q_y = boost::lexical_cast<double>(vec[2]);
+          q_z = boost::lexical_cast<double>(vec[3]);
+          q_w = boost::lexical_cast<double>(vec[4]);
+          x = boost::lexical_cast<double>(vec[5]);
+          y = boost::lexical_cast<double>(vec[6]);
+          z = boost::lexical_cast<double>(vec[7]);
+          g_x = boost::lexical_cast<double>(vec[8]);
+          g_y = boost::lexical_cast<double>(vec[9]);
+          g_z = boost::lexical_cast<double>(vec[10]);
+          a_x = boost::lexical_cast<double>(vec[11]);
+          a_y = boost::lexical_cast<double>(vec[12]);
+          a_z = boost::lexical_cast<double>(vec[13]);
+          m_x = boost::lexical_cast<double>(vec[14]);
+          m_y = boost::lexical_cast<double>(vec[15]);
+          m_z = boost::lexical_cast<double>(vec[16]);
 
           imu_data.header.stamp.fromNSec(stamp);
           imu_data.header.frame_id = "imu";
