@@ -121,7 +121,7 @@ void ROSThread::ros_initialize(ros::NodeHandle &n)
   altimeter_pub_ = nh_.advertise<irp_sen_msgs::altimeter>("/altimeter_data", 1000);
   encoder_pub_ = nh_.advertise<irp_sen_msgs::encoder>("/encoder_count", 1000);
   odometry_pub_ = nh_.advertise<nav_msgs::Odometry>("/odom", 1000);
-  fog_pub_ = nh_.advertise<irp_sen_msgs::fog_3axis>("/dsp1760_data", 1000);
+  fog_pub_ = nh_.advertise<irp_sen_msgs::fog_3axis>("/fog_data", 1000);
   gps_pub_ = nh_.advertise<sensor_msgs::NavSatFix>("/gps/fix", 1000);
   gt_pub_ = nh_.advertise<sensor_msgs::NavSatFix>("/ground_truth", 1000);
   vrs_pub_ = nh_.advertise<irp_sen_msgs::vrs>("/vrs_gps_data", 1000);
@@ -524,7 +524,7 @@ void ROSThread::Ready()
       d_yaw = boost::lexical_cast<float>(vec[3]);
 
       fog_data.header.stamp.fromNSec(stamp);
-      fog_data.header.frame_id = "dsp1760";
+      fog_data.header.frame_id = "fog";
       fog_data.d_roll = d_roll;
       fog_data.d_pitch = d_pitch;
       fog_data.d_yaw = d_yaw;
@@ -1236,9 +1236,12 @@ void ROSThread::DataStampThread()
     }else if(iter->second.compare("fog") == 0){
       fog_thread_.push(stamp);
       fog_thread_.cv_.notify_all();
-    }else if(iter->second.compare("gps") == 0){
+    }else if(iter->second.compare("gps") == 0) {
       gps_thread_.push(stamp);
       gps_thread_.cv_.notify_all();
+    }else if(iter->second.compare("GT") == 0){
+      gt_thread_.push(stamp);
+      gt_thread_.cv_.notify_all();
     }else if(iter->second.compare("vrs") == 0){
       vrs_thread_.push(stamp);
       vrs_thread_.cv_.notify_all();
@@ -1435,6 +1438,43 @@ void ROSThread::FogThread()
       //process
       if(fog_data_.find(data) != fog_data_.end()){
         fog_pub_.publish(fog_data_[data]);
+
+        nav_msgs::Odometry transformation;
+
+        transformation.header.stamp = fog_data_[data].header.stamp;
+        transformation.header.frame_id = "car";
+        transformation.child_frame_id = "fog";
+
+        tf::Matrix3x3 m;
+        tf::Quaternion q;
+        tf::Vector3 v;
+
+        v[0] = -0.335;
+        v[1] = -0.035;
+        v[2] = 0.78;
+
+        m[0][0] = 1;
+        m[0][1] = 0;
+        m[0][2] = 0;
+        m[1][0] = 0;
+        m[1][1] = 1;
+        m[1][2] = 0;
+        m[2][0] = 0;
+        m[2][1] = 0;
+        m[2][2] = 1;
+
+        m.getRotation(q);
+
+        transformation.pose.pose.position.x = v[0];
+        transformation.pose.pose.position.y = v[1];
+        transformation.pose.pose.position.z = v[2];
+
+        transformation.pose.pose.orientation.x = q.x();
+        transformation.pose.pose.orientation.y = q.y();
+        transformation.pose.pose.orientation.z = q.z();
+        transformation.pose.pose.orientation.w = q.w();
+
+        ROSThread::BroadcastTF2(transformation, "car", "fog");
       }
 
     }
@@ -1457,6 +1497,43 @@ void ROSThread::GpsThread()
       //cout << data << endl;
       if(gps_data_.find(data) != gps_data_.end()){
         gps_pub_.publish(gps_data_[data]);
+
+        nav_msgs::Odometry transformation;
+
+        transformation.header.stamp = gps_data_[data].header.stamp;
+        transformation.header.frame_id = "car";
+        transformation.child_frame_id = "gps";
+
+        tf::Matrix3x3 m;
+        tf::Quaternion q;
+        tf::Vector3 v;
+
+        v[0] = -0.32;
+        v[1] = 0;
+        v[2] = 1.7;
+
+        m[0][0] = 1;
+        m[0][1] = 0;
+        m[0][2] = 0;
+        m[1][0] = 0;
+        m[1][1] = 1;
+        m[1][2] = 0;
+        m[2][0] = 0;
+        m[2][1] = 0;
+        m[2][2] = 1;
+
+        m.getRotation(q);
+
+        transformation.pose.pose.position.x = v[0];
+        transformation.pose.pose.position.y = v[1];
+        transformation.pose.pose.position.z = v[2];
+
+        transformation.pose.pose.orientation.x = q.x();
+        transformation.pose.pose.orientation.y = q.y();
+        transformation.pose.pose.orientation.z = q.z();
+        transformation.pose.pose.orientation.w = q.w();
+
+        ROSThread::BroadcastTF2(transformation, "car", "gps");
       }
 
     }
@@ -1502,6 +1579,42 @@ void ROSThread::ImuThread()
         if(imu_data_version_ == 2){
           magnet_pub_.publish(mag_data_[data]);
         }
+        nav_msgs::Odometry transformation;
+
+        transformation.header.stamp = imu_data_[data].header.stamp;
+        transformation.header.frame_id = "car";
+        transformation.child_frame_id = "imu";
+
+        tf::Matrix3x3 m;
+        tf::Quaternion q;
+        tf::Vector3 v;
+
+        v[0] = -0.07;
+        v[1] = 0;
+        v[2] = 1.7;
+
+        m[0][0] = 1;
+        m[0][1] = 0;
+        m[0][2] = 0;
+        m[1][0] = 0;
+        m[1][1] = 1;
+        m[1][2] = 0;
+        m[2][0] = 0;
+        m[2][1] = 0;
+        m[2][2] = 1;
+
+        m.getRotation(q);
+
+        transformation.pose.pose.position.x = v[0];
+        transformation.pose.pose.position.y = v[1];
+        transformation.pose.pose.position.z = v[2];
+
+        transformation.pose.pose.orientation.x = q.x();
+        transformation.pose.pose.orientation.y = q.y();
+        transformation.pose.pose.orientation.z = q.z();
+        transformation.pose.pose.orientation.w = q.w();
+
+        ROSThread::BroadcastTF2(transformation, "car", "imu");
       }
 
     }
@@ -1969,6 +2082,44 @@ void ROSThread::StereoThread()
 
       }
       previous_img_index = current_img_index;
+
+      nav_msgs::Odometry transformation;
+
+      // Left cam
+      transformation.header.stamp = imu_data_[data].header.stamp;
+      transformation.header.frame_id = "car";
+      transformation.child_frame_id = "left_cam";
+
+      tf::Matrix3x3 m;
+      tf::Quaternion q;
+      tf::Vector3 v;
+
+      v[0] = 1.64239;
+      v[1] = 0.247401;
+      v[2] = 1.58411;
+
+      m[0][0] = -0.00680499;
+      m[0][1] = -0.0153215;
+      m[0][2] = 0.99985;
+      m[1][0] = -0.999977;
+      m[1][1] = 0.000334627;
+      m[1][2] = -0.00680066;
+      m[2][0] = -0.000230383;
+      m[2][1] = -0.999883;
+      m[2][2] = -0.0153234;
+
+      m.getRotation(q);
+
+      transformation.pose.pose.position.x = v[0];
+      transformation.pose.pose.position.y = v[1];
+      transformation.pose.pose.position.z = v[2];
+
+      transformation.pose.pose.orientation.x = q.x();
+      transformation.pose.pose.orientation.y = q.y();
+      transformation.pose.pose.orientation.z = q.z();
+      transformation.pose.pose.orientation.w = q.w();
+
+      ROSThread::BroadcastTF2(transformation, "car", "left_cam");
     }
     if(stereo_thread_.active_ == false) return;
   }
