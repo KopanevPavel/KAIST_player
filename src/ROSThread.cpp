@@ -123,7 +123,7 @@ void ROSThread::ros_initialize(ros::NodeHandle &n)
   odometry_pub_ = nh_.advertise<nav_msgs::Odometry>("/odom", 1000);
   fog_pub_ = nh_.advertise<irp_sen_msgs::fog_3axis>("/fog_data", 1000);
   gps_pub_ = nh_.advertise<sensor_msgs::NavSatFix>("/gps/fix", 1000);
-  gt_pub_ = nh_.advertise<sensor_msgs::NavSatFix>("/ground_truth", 1000);
+  gt_pub_ = nh_.advertise<nav_msgs::Odometry>("/ground_truth", 1000);
   vrs_pub_ = nh_.advertise<irp_sen_msgs::vrs>("/vrs_gps_data", 1000);
   gps_odometry_pub_ = nh_.advertise<nav_msgs::Odometry>("/gps/odom", 1000);
   imu_origin_pub_ = nh_.advertise<irp_sen_msgs::imu>("/xsens_imu_data", 1000);
@@ -1376,6 +1376,43 @@ void ROSThread::EncoderThread()
           odometry_pub_.publish(odometry_data_[data]);
 
           ROSThread::BroadcastTF2(odometry_data_[data], "map_odom", "wheel_base");
+
+          nav_msgs::Odometry transformation;
+
+          transformation.header.stamp = odometry_data_[data].header.stamp;
+          transformation.header.frame_id = "car";
+          transformation.child_frame_id = "wheel_base";
+
+          tf::Matrix3x3 m;
+          tf::Quaternion q;
+          tf::Vector3 v;
+
+          v[0] = 0;
+          v[1] = 0;
+          v[2] = 0.311;
+
+          m[0][0] = 1;
+          m[0][1] = 0;
+          m[0][2] = 0;
+          m[1][0] = 0;
+          m[1][1] = 1;
+          m[1][2] = 0;
+          m[2][0] = 0;
+          m[2][1] = 0;
+          m[2][2] = 1;
+
+          m.getRotation(q);
+
+          transformation.pose.pose.position.x = v[0];
+          transformation.pose.pose.position.y = v[1];
+          transformation.pose.pose.position.z = v[2];
+
+          transformation.pose.pose.orientation.x = q.x();
+          transformation.pose.pose.orientation.y = q.y();
+          transformation.pose.pose.orientation.z = q.z();
+          transformation.pose.pose.orientation.w = q.w();
+
+          ROSThread::BroadcastTF2(transformation, "car", "wheel_base");
         }
       }
 
@@ -1417,7 +1454,9 @@ void ROSThread::GTThread()
             if(gt_data_.find(data) != gt_data_.end()){
                 gt_pub_.publish(gt_data_[data]);
 
-                ROSThread::BroadcastTF2(gt_data_[data], "map_odom", "car_gt");
+                //TODO: fix Ignoring transform for child_frame_id "car_gt" from authority "unknown_publisher"
+                //because of an invalid quaternion in the transform (0,125016 0,005951 0,371076 0,638309)
+                //ROSThread::BroadcastTF2(gt_data_[data], "map_odom", "car_gt");
             }
 
         }
