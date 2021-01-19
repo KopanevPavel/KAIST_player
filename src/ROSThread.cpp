@@ -44,6 +44,7 @@ ROSThread::~ROSThread()
   encoder_thread_.active_ = false;
   fog_thread_.active_ = false;
   gps_thread_.active_ = false;
+  gt_thread_.active_ = false;
   vrs_thread_.active_ = false;
   imu_thread_.active_ = false;
   velodyne_left_thread_.active_ = false;
@@ -68,6 +69,9 @@ ROSThread::~ROSThread()
 
   gps_thread_.cv_.notify_all();
   if(gps_thread_.thread_.joinable()) gps_thread_.thread_.join();
+
+  gt_thread_.cv_.notify_all();
+  if(gt_thread_.thread_.joinable()) gt_thread_.thread_.join();
 
   vrs_thread_.cv_.notify_all();
   if(vrs_thread_.thread_.joinable()) vrs_thread_.thread_.join();
@@ -119,6 +123,7 @@ void ROSThread::ros_initialize(ros::NodeHandle &n)
   odometry_pub_ = nh_.advertise<nav_msgs::Odometry>("/odom", 1000);
   fog_pub_ = nh_.advertise<irp_sen_msgs::fog_3axis>("/dsp1760_data", 1000);
   gps_pub_ = nh_.advertise<sensor_msgs::NavSatFix>("/gps/fix", 1000);
+  gt_pub_ = nh_.advertise<sensor_msgs::NavSatFix>("/ground_truth", 1000);
   vrs_pub_ = nh_.advertise<irp_sen_msgs::vrs>("/vrs_gps_data", 1000);
   gps_odometry_pub_ = nh_.advertise<nav_msgs::Odometry>("/gps/odom", 1000);
   imu_origin_pub_ = nh_.advertise<irp_sen_msgs::imu>("/xsens_imu_data", 1000);
@@ -174,6 +179,9 @@ void ROSThread::Ready()
   gps_thread_.active_ = false;
   gps_thread_.cv_.notify_all();
   if(gps_thread_.thread_.joinable()) gps_thread_.thread_.join();
+  gt_thread_.active_ = false;
+  gt_thread_.cv_.notify_all();
+  if(gt_thread_.thread_.joinable()) gt_thread_.thread_.join();
   vrs_thread_.active_ = false;
   vrs_thread_.cv_.notify_all();
   if(vrs_thread_.thread_.joinable()) vrs_thread_.thread_.join();
@@ -228,6 +236,59 @@ void ROSThread::Ready()
   initial_data_stamp_ = data_stamp_.begin()->first - 1;
   last_data_stamp_ = prev(data_stamp_.end(),1)->first - 1;
 
+  //Read ground truth
+  std::ifstream dataFileGT((data_folder_path_+"/global_pose.csv").c_str());
+  std::string line;
+
+  double gt_value[12];
+  nav_msgs::Odometry gt_odom;
+  gt_data_.clear();
+
+  // Iterate through each line and split the content using delimeter
+  while (getline(dataFileGT, line))
+  {
+      std::vector<std::string> vec;
+      boost::algorithm::split(vec, line, boost::is_any_of(","));
+
+      stamp = boost::lexical_cast<long>(vec[0]);
+      for (int i = 0; i <= 11; i++) {
+          gt_value[i] = boost::lexical_cast<double>(vec[i+1]);  //P(0,0), P(0,1), P(0,2), P(0,3), P(1,0), P(1,1), P(1,2), P(1,3), P(2,0), P(2,1), P(2,2), P(2,3)
+      }
+
+      gt_odom.header.stamp.fromNSec(stamp);
+
+      gt_odom.header.frame_id = "map_odom";
+      gt_odom.child_frame_id = "car_gt";
+
+      gt_odom.pose.pose.position.x = gt_value[3];
+      gt_odom.pose.pose.position.y = gt_value[7];
+      gt_odom.pose.pose.position.z = gt_value[11];
+
+      tf::Matrix3x3 m;
+      tf::Quaternion q;
+      int cnt(0);
+
+      for (int i = 0; i < 3; i++) {
+          for (int j = 0; j < 3; j++) {
+              if ((cnt != 3) && (cnt != 7) && (cnt != 11)) {
+                  m[i][j] = gt_value[cnt];
+              }
+              cnt ++;
+          }
+      }
+
+      m.getRotation(q);
+      gt_odom.pose.pose.orientation.x = q.x();
+      gt_odom.pose.pose.orientation.y = q.y();
+      gt_odom.pose.pose.orientation.z = q.z();
+      gt_odom.pose.pose.orientation.w = q.w();
+
+      gt_data_[stamp] = gt_odom;
+  }
+  // Close the File
+  dataFileGT.close();
+  cout << "GT data is loaded" << endl;
+
   //Read altimeter data
   /*
   fp = fopen((data_folder_path_+"/sensor_data/altimeter.csv").c_str(),"r");
@@ -248,7 +309,7 @@ void ROSThread::Ready()
   //dataList = ROSThread::ParseData((data_folder_path_+"/sensor_data/altimeter.csv").c_str(), ",");
 
   std::ifstream dataFileAltimeter((data_folder_path_+"/sensor_data/altimeter.csv").c_str());
-  std::string line = "";
+  line = "";
 
   double altimeter_value;
   irp_sen_msgs::altimeter altimeter_data;
@@ -381,7 +442,7 @@ void ROSThread::Ready()
       //Odometry message
       nav_msgs::Odometry odom;
       odom.header.stamp.fromNSec(current_stamp);
-      odom.header.frame_id = "map";
+      odom.header.frame_id = "map_odom";
 
       //set the position
       odom.pose.pose.position.x = encoder_x_;
@@ -405,7 +466,7 @@ void ROSThread::Ready()
       odom.twist.covariance[35] = 1;
 
       //set the velocity
-      odom.child_frame_id = "wheel_odometry";
+      odom.child_frame_id = "wheel_base";
       odom.twist.twist.linear.x = vx;
       odom.twist.twist.linear.y = vy;
       odom.twist.twist.angular.z = vth;
@@ -1077,6 +1138,7 @@ void ROSThread::Ready()
   encoder_thread_.active_ = true;
   fog_thread_.active_ = true;
   gps_thread_.active_ = true;
+  gt_thread_.active_ = true;
   vrs_thread_.active_ = true;
   imu_thread_.active_ = true;
   if (include_LIDAR_data_)
@@ -1101,6 +1163,7 @@ void ROSThread::Ready()
   encoder_thread_.thread_ = std::thread(&ROSThread::EncoderThread,this);
   fog_thread_.thread_ = std::thread(&ROSThread::FogThread,this);
   gps_thread_.thread_ = std::thread(&ROSThread::GpsThread,this);
+  gt_thread_.thread_ = std::thread(&ROSThread::GTThread,this);
   vrs_thread_.thread_ = std::thread(&ROSThread::VrsThread,this);
   imu_thread_.thread_ = std::thread(&ROSThread::ImuThread,this);
   if (include_LIDAR_data_)
@@ -1248,6 +1311,7 @@ void ROSThread::AltimeterThread()
       //process
       if(altimeter_data_.find(data) != altimeter_data_.end()){
         altimeter_pub_.publish(altimeter_data_[data]);
+        //ROSThread::BroadcastTF2(odometry_data_[data], "car", "altimeter");
       }
     }
     if(altimter_thread_.active_ == false) return;
@@ -1272,7 +1336,7 @@ void ROSThread::EncoderThread()
         if(encoder_param_load_flag_){
           odometry_pub_.publish(odometry_data_[data]);
 
-          ROSThread::BroadcastTF2(odometry_data_[data], "map", "wheel_odometry");
+          ROSThread::BroadcastTF2(odometry_data_[data], "map_odom", "wheel_base");
         }
       }
 
@@ -1299,6 +1363,27 @@ void ROSThread::BroadcastTF2(T &msg, string header_frame_id, string child_frame_
     transformStamped.transform.rotation.z = msg.pose.pose.orientation.z;
     transformStamped.transform.rotation.w = msg.pose.pose.orientation.w;
     br.sendTransform(transformStamped);
+}
+
+void ROSThread::GTThread()
+{
+    while(1){
+        std::unique_lock<std::mutex> ul(gt_thread_.mutex_);
+        gt_thread_.cv_.wait(ul);
+        if(gt_thread_.active_ == false) return;
+        ul.unlock();
+
+        while(!gt_thread_.data_queue_.empty()){
+            auto data = gt_thread_.pop();
+            if(gt_data_.find(data) != gt_data_.end()){
+                gt_pub_.publish(gt_data_[data]);
+
+                ROSThread::BroadcastTF2(gt_data_[data], "map_odom", "car_gt");
+            }
+
+        }
+        if(gt_thread_.active_ == false) return;
+    }
 }
 
 void ROSThread::FogThread()

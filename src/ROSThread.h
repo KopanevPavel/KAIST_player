@@ -153,6 +153,7 @@ private:
     ros::Publisher odometry_pub_;
     ros::Publisher fog_pub_;
     ros::Publisher gps_pub_;
+    ros::Publisher gt_pub_;
     ros::Publisher vrs_pub_;
     ros::Publisher gps_odometry_pub_;
     ros::Publisher imu_origin_pub_;
@@ -177,6 +178,7 @@ private:
     map<int64_t, irp_sen_msgs::altimeter>   altimeter_data_;
     map<int64_t, irp_sen_msgs::encoder>     encoder_data_;
     map<int64_t, nav_msgs::Odometry>     odometry_data_;
+    map<int64_t, nav_msgs::Odometry>     gt_data_;
     map<int64_t, irp_sen_msgs::fog_3axis>   fog_data_;
     map<int64_t, sensor_msgs::NavSatFix>    gps_data_;
     map<int64_t, irp_sen_msgs::vrs>         vrs_data_;
@@ -191,6 +193,7 @@ private:
     DataThread<int64_t> encoder_thread_;
     DataThread<int64_t> fog_thread_;
     DataThread<int64_t> gps_thread_;
+    DataThread<int64_t> gt_thread_;
     DataThread<int64_t> vrs_thread_;
     DataThread<int64_t> imu_thread_;
     DataThread<int64_t> omni_thread_;
@@ -207,6 +210,7 @@ private:
     void EncoderThread();
     void FogThread();
     void GpsThread();
+    void GTThread();
     void VrsThread();
     void ImuThread();
     void VelodyneLeftThread();
@@ -226,8 +230,6 @@ private:
 
     vector<string> stereo_file_list_;
     vector<string> omni_file_list_;
-
-
 
     ros::Timer timer_;
     void TimerCallback(const ros::TimerEvent&);
