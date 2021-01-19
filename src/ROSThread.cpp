@@ -221,13 +221,14 @@ void ROSThread::Ready()
 //    data_stamp_[stamp] = data_name;
     data_stamp_.insert( multimap<int64_t, string>::value_type(stamp, data_name));
   }
-  cout << "Stamp data are loaded" << endl;
+  cout << "Stamp data is loaded" << endl;
   fclose(fp);
 
   initial_data_stamp_ = data_stamp_.begin()->first - 1;
   last_data_stamp_ = prev(data_stamp_.end(),1)->first - 1;
 
   //Read altimeter data
+  /*
   fp = fopen((data_folder_path_+"/sensor_data/altimeter.csv").c_str(),"r");
   double altimeter_value;
   irp_sen_msgs::altimeter altimeter_data;
@@ -238,8 +239,46 @@ void ROSThread::Ready()
     altimeter_data.data = altimeter_value;
     altimeter_data_[stamp] = altimeter_data;
   }
-  cout << "Altimeter data are loaded" << endl;
+  cout << "Altimeter data is loaded" << endl;
   fclose(fp);
+  */
+
+  //std::vector<std::vector<std::string> > dataList;
+  //dataList = ROSThread::ParseData((data_folder_path_+"/sensor_data/altimeter.csv").c_str(), ",");
+
+  std::ifstream dataFileAltimeter((data_folder_path_+"/sensor_data/altimeter.csv").c_str());
+  std::string line = "";
+
+  double altimeter_value;
+  irp_sen_msgs::altimeter altimeter_data;
+  altimeter_data_.clear();
+
+  // Iterate through each line and split the content using delimeter
+  while (getline(dataFileAltimeter, line))
+  {
+      std::vector<std::string> vec;
+      boost::algorithm::split(vec, line, boost::is_any_of(","));
+
+      stamp = boost::lexical_cast<long>(vec[0]);
+      altimeter_value = boost::lexical_cast<long>(vec[0]);
+
+      //stamp = std::stol(vec[0]);
+      //altimeter_value = std::stod(vec[1]);
+      //altimeter_value = std::atof(vec[1].c_str());
+
+      std::stringstream stream(vec[1]);
+      stream >> altimeter_value;
+
+      altimeter_data.header.stamp.fromNSec(stamp);
+      altimeter_data.header.frame_id = "altimeter";
+      altimeter_data.data = altimeter_value;
+      altimeter_data_[stamp] = altimeter_data;
+      //dataList.push_back(vec);
+  }
+  // Close the File
+  dataFileAltimeter.close();
+
+  cout << "Altimeter data is loaded" << endl;
 
   //Read encoder data
 
@@ -272,7 +311,7 @@ void ROSThread::Ready()
       encoder_param_load_flag_ = true;
    }
 
-  //Read encode data
+  //Read encoder data
 
   fp = fopen((data_folder_path_+"/sensor_data/encoder.csv").c_str(),"r");
   int64_t pre_left_count = 0, pre_right_count = 0;
@@ -376,9 +415,6 @@ void ROSThread::Ready()
 
       //set covariance of odometry
 
-
-
-
       odometry_data_[stamp] = odom;
 
     }
@@ -389,10 +425,12 @@ void ROSThread::Ready()
   }
 
 //  cout << stop_period_.size() << endl;
-  cout << "Encoder data are loaded" << endl;
+  cout << "Encoder data is loaded" << endl;
   fclose(fp);
 
+
   //Read fog data
+  /*
   fp = fopen((data_folder_path_+"/sensor_data/fog.csv").c_str(),"r");
   float d_roll, d_pitch, d_yaw;
   irp_sen_msgs::fog_3axis fog_data;
@@ -405,16 +443,61 @@ void ROSThread::Ready()
     fog_data.d_yaw = d_yaw;
     fog_data_[stamp] = fog_data;
   }
-  cout << "Fog data are loaded" << endl;
+  cout << "Fog data is loaded" << endl;
   fclose(fp);
+  */
+
+  std::ifstream dataFileFOG((data_folder_path_+"/sensor_data/fog.csv").c_str());
+  line = "";
+
+  float d_roll, d_pitch, d_yaw;
+  irp_sen_msgs::fog_3axis fog_data;
+  fog_data_.clear();
+
+  // Iterate through each line and split the content using delimeter
+  while (getline(dataFileFOG, line))
+  {
+      std::vector<std::string> vec;
+      boost::algorithm::split(vec, line, boost::is_any_of(","));
+      //cout<<"1:"<<vec[0]<<"2:"<<vec[1]<<endl;
+
+      stamp = boost::lexical_cast<long>(vec[0]);
+      d_roll = boost::lexical_cast<float>(vec[1]);
+      d_pitch = boost::lexical_cast<float>(vec[2]);
+      d_yaw = boost::lexical_cast<float>(vec[3]);
+
+      //stamp = std::stol(vec[0]);
+      //d_roll = std::stof(vec[1]);
+      //d_pitch = std::stof(vec[2]);
+      //d_yaw = std::stof(vec[3]);
+
+      cout<<stamp<<d_roll<<d_pitch<<d_yaw<<endl;
+
+      //std::stringstream stream1(vec[1]);
+      //stream1 >> d_roll;
+      //std::stringstream stream2(vec[2]);
+      //stream2 >> d_pitch;
+      //std::stringstream stream3(vec[3]);
+      //stream3 >> d_yaw;
+
+      fog_data.header.stamp.fromNSec(stamp);
+      fog_data.header.frame_id = "dsp1760";
+      fog_data.d_roll = d_roll;
+      fog_data.d_pitch = d_pitch;
+      fog_data.d_yaw = d_yaw;
+      fog_data_[stamp] = fog_data;
+  }
+  // Close the File
+  dataFileFOG.close();
+  cout << "Fog data is loaded" << endl;
 
   //Read gps data
+  /*
   fp = fopen((data_folder_path_+"/sensor_data/gps.csv").c_str(),"r");
   double latitude, longitude, altitude, altitude_orthometric;
   double cov[9];
   sensor_msgs::NavSatFix gps_data;
   gps_data_.clear();
-  //cout << fscanf(fp,"%ld,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",&stamp,&latitude,&longitude,&altitude,&cov[0],&cov[1],&cov[2],&cov[3],&cov[4],&cov[5],&cov[6],&cov[7],&cov[8]) << endl;
   while(fscanf(fp,"%ld,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",&stamp,&latitude,&longitude,&altitude,&cov[0],&cov[1],&cov[2],&cov[3],&cov[4],&cov[5],&cov[6],&cov[7],&cov[8]) == 13){
     gps_data.header.stamp.fromNSec(stamp);
     gps_data.header.frame_id = "gps";
@@ -423,12 +506,46 @@ void ROSThread::Ready()
     gps_data.altitude = altitude;
     for(int i = 0 ; i < 9 ; i ++) gps_data.position_covariance[i] = cov[i];
     gps_data_[stamp] = gps_data;
-
-
-
   }
-  cout << "Gps data are loaded" << endl;
+  cout << "Gps data is loaded" << endl;
   fclose(fp);
+  */
+
+  std::ifstream dataFileGPS((data_folder_path_+"/sensor_data/gps.csv").c_str());
+  line = "";
+
+  double latitude, longitude, altitude, altitude_orthometric;
+  double cov[9];
+  sensor_msgs::NavSatFix gps_data;
+  gps_data_.clear();
+
+  // Iterate through each line and split the content using delimeter
+  while (getline(dataFileGPS, line))
+  {
+      std::vector<std::string> vec;
+      boost::algorithm::split(vec, line, boost::is_any_of(","));
+      //cout<<"1:"<<vec[0]<<"2:"<<vec[1]<<endl
+
+      stamp = std::stol(vec[0]);
+      latitude = std::stod(vec[1]);
+      longitude = std::stod(vec[2]);
+      altitude = std::stod(vec[3]);
+
+      for (int i = 0; i <= 8; i++) {
+          cov[i] = std::stod(vec[i+4]);
+      }
+
+      gps_data.header.stamp.fromNSec(stamp);
+      gps_data.header.frame_id = "gps";
+      gps_data.latitude = latitude;
+      gps_data.longitude = longitude;
+      gps_data.altitude = altitude;
+      for(int i = 0 ; i < 9 ; i ++) gps_data.position_covariance[i] = cov[i];
+      gps_data_[stamp] = gps_data;
+  }
+  // Close the File
+  dataFileGPS.close();
+  cout << "Gps data is loaded" << endl;
 
   //Read gps data
   fp = fopen((data_folder_path_+"/sensor_data/vrs_gps.csv").c_str(),"r");
@@ -536,11 +653,12 @@ void ROSThread::Ready()
 
     }
   }
-  cout << "Vrs gps data are loaded" << endl;
+  cout << "Vrs gps data is loaded" << endl;
   fclose(fp);
 
 
   //Read IMU data
+  /*
   fp = fopen((data_folder_path_+"/sensor_data/xsens_imu.csv").c_str(),"r");
   double q_x,q_y,q_z,q_w,x,y,z,g_x,g_y,g_z,a_x,a_y,a_z,m_x,m_y,m_z;
   irp_sen_msgs::imu imu_data_origin;
@@ -634,8 +752,140 @@ void ROSThread::Ready()
 
     }
   }
-  cout << "IMU data are loaded" << endl;
+  cout << "IMU data is loaded" << endl;
   fclose(fp);
+  */
+
+  std::ifstream dataFileIMU((data_folder_path_+"/sensor_data/xsens_imu.csv").c_str());
+  line = "";
+
+  double q_x,q_y,q_z,q_w,x,y,z,g_x,g_y,g_z,a_x,a_y,a_z,m_x,m_y,m_z;
+  irp_sen_msgs::imu imu_data_origin;
+  sensor_msgs::Imu imu_data;
+  sensor_msgs::MagneticField mag_data;
+  imu_data_.clear();
+  mag_data_.clear();
+
+  // Iterate through each line and split the content using delimeter
+  while (getline(dataFileIMU, line))
+  {
+      std::vector<std::string> vec;
+      boost::algorithm::split(vec, line, boost::is_any_of(","));
+
+      int length = vec.size();
+
+      if(length == 8){
+          stamp = std::stol(vec[0]);
+          q_x = std::stol(vec[1]);
+          q_y = std::stol(vec[2]);
+          q_z = std::stol(vec[3]);
+          q_w = std::stol(vec[4]);
+          x = std::stol(vec[5]);
+          y = std::stol(vec[6]);
+          z = std::stol(vec[7]);
+
+          imu_data.header.stamp.fromNSec(stamp);
+          imu_data.header.frame_id = "imu";
+          imu_data.orientation.x = q_x;
+          imu_data.orientation.y = q_y;
+          imu_data.orientation.z = q_z;
+          imu_data.orientation.w = q_w;
+
+          imu_data_[stamp] = imu_data;
+          imu_data_version_ = 1;
+
+
+          imu_data_origin.header.stamp.fromNSec(stamp);
+          imu_data_origin.header.frame_id = "imu";
+          imu_data_origin.quaternion_data.x = q_x;
+          imu_data_origin.quaternion_data.y = q_y;
+          imu_data_origin.quaternion_data.z = q_z;
+          imu_data_origin.quaternion_data.w = q_w;
+          imu_data_origin.eular_data.x = x;
+          imu_data_origin.eular_data.y = y;
+          imu_data_origin.eular_data.z = z;
+          imu_data_origin_[stamp] = imu_data_origin;
+
+
+      }else if(length == 17){
+          stamp = std::stol(vec[0]);
+          q_x = std::stol(vec[1]);
+          q_y = std::stol(vec[2]);
+          q_z = std::stol(vec[3]);
+          q_w = std::stol(vec[4]);
+          x = std::stol(vec[5]);
+          y = std::stol(vec[6]);
+          z = std::stol(vec[7]);
+          g_x = std::stol(vec[8]);
+          g_y = std::stol(vec[9]);
+          g_z = std::stol(vec[10]);
+          a_x = std::stol(vec[11]);
+          a_y = std::stol(vec[12]);
+          a_z = std::stol(vec[13]);
+          m_x = std::stol(vec[14]);
+          m_y = std::stol(vec[15]);
+          m_z = std::stol(vec[16]);
+
+          imu_data.header.stamp.fromNSec(stamp);
+          imu_data.header.frame_id = "imu";
+          imu_data.orientation.x = q_x;
+          imu_data.orientation.y = q_y;
+          imu_data.orientation.z = q_z;
+          imu_data.orientation.w = q_w;
+          imu_data.angular_velocity.x = g_x;
+          imu_data.angular_velocity.y = g_y;
+          imu_data.angular_velocity.z = g_z;
+          imu_data.linear_acceleration.x = a_x;
+          imu_data.linear_acceleration.y = a_y;
+          imu_data.linear_acceleration.z = a_z;
+
+          imu_data.orientation_covariance[0] = 3;
+          imu_data.orientation_covariance[4] = 3;
+          imu_data.orientation_covariance[8] = 3;
+          imu_data.angular_velocity_covariance[0] = 3;
+          imu_data.angular_velocity_covariance[4] = 3;
+          imu_data.angular_velocity_covariance[8] = 3;
+          imu_data.linear_acceleration_covariance[0] = 3;
+          imu_data.linear_acceleration_covariance[4] = 3;
+          imu_data.linear_acceleration_covariance[8] = 3;
+
+
+          imu_data_[stamp] = imu_data;
+          mag_data.header.stamp.fromNSec(stamp);
+          mag_data.header.frame_id = "imu";
+          mag_data.magnetic_field.x = m_x;
+          mag_data.magnetic_field.y = m_y;
+          mag_data.magnetic_field.z = m_z;
+          mag_data_[stamp] = mag_data;
+          imu_data_version_ = 2;
+
+
+          imu_data_origin.header.stamp.fromNSec(stamp);
+          imu_data_origin.header.frame_id = "imu";
+          imu_data_origin.quaternion_data.x = q_x;
+          imu_data_origin.quaternion_data.y = q_y;
+          imu_data_origin.quaternion_data.z = q_z;
+          imu_data_origin.quaternion_data.w = q_w;
+          imu_data_origin.eular_data.x = x;
+          imu_data_origin.eular_data.y = y;
+          imu_data_origin.eular_data.z = z;
+          imu_data_origin.gyro_data.x = g_x;
+          imu_data_origin.gyro_data.y = g_y;
+          imu_data_origin.gyro_data.z = g_z;
+          imu_data_origin.acceleration_data.x = a_x;
+          imu_data_origin.acceleration_data.y = a_y;
+          imu_data_origin.acceleration_data.z = a_z;
+          imu_data_origin.magneticfield_data.x = m_x;
+          imu_data_origin.magneticfield_data.y = m_y;
+          imu_data_origin.magneticfield_data.z = m_z;
+          imu_data_origin_[stamp] = imu_data_origin;
+
+      }
+
+  }
+  // Close the File
+  dataFileIMU.close();
+  cout << "IMU data is loaded" << endl;
 
   velodyne_left_file_list_.clear();
   velodyne_right_file_list_.clear();
@@ -1041,7 +1291,7 @@ void ROSThread::EncoderThread()
         if(encoder_param_load_flag_){
           odometry_pub_.publish(odometry_data_[data]);
 
-          ROSThread::BroadcastTF2(odometry_data_[data],  "map","wheel_odometry");
+          ROSThread::BroadcastTF2(odometry_data_[data], "map", "wheel_odometry");
         }
       }
 
@@ -1857,4 +2107,22 @@ void ROSThread::ResetProcessStamp(int position)
     reset_process_stamp_flag_ = true;
   }
 
+}
+
+std::vector<std::vector<std::string> > ROSThread::ParseData(string fileName, string delimeter) {
+    std::ifstream file(fileName);
+    std::vector<std::vector<std::string> > dataList;
+    std::string line = "";
+
+    // Iterate through each line and split the content using delimeter
+    while (getline(file, line))
+    {
+        std::vector<std::string> vec;
+        //cout<<line<<endl;
+        boost::algorithm::split(vec, line, boost::is_any_of(delimeter));
+        dataList.push_back(vec);
+    }
+    // Close the File
+    file.close();
+    return dataList;
 }

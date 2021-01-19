@@ -262,6 +262,8 @@ private:
     template <typename T>
     void BroadcastTF2(T &msg, string header_frame_id, string child_frame_id);
 
+    std::vector<std::vector<std::string> > ParseData(string fileName, string delimeter);
+
 
 public slots:
 
