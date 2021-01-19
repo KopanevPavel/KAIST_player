@@ -447,7 +447,7 @@ void ROSThread::Ready()
       //set the position
       odom.pose.pose.position.x = encoder_x_;
       odom.pose.pose.position.y = encoder_y_;;
-      odom.pose.pose.position.z = 0.0;
+      odom.pose.pose.position.z = 0.0; // Wheel odometry frame == car center
       odom.pose.pose.orientation = odom_quat;
 
       //pose covariance (6x6)
@@ -466,7 +466,7 @@ void ROSThread::Ready()
       odom.twist.covariance[35] = 1;
 
       //set the velocity
-      odom.child_frame_id = "wheel_base";
+      odom.child_frame_id = "car";
       odom.twist.twist.linear.x = vx;
       odom.twist.twist.linear.y = vy;
       odom.twist.twist.angular.z = vth;
@@ -1375,13 +1375,14 @@ void ROSThread::EncoderThread()
         if(encoder_param_load_flag_){
           odometry_pub_.publish(odometry_data_[data]);
 
-          ROSThread::BroadcastTF2(odometry_data_[data], "map_odom", "wheel_base");
+          ROSThread::BroadcastTF2(odometry_data_[data], "map_odom", "car");
 
+          /*
           nav_msgs::Odometry transformation;
 
           transformation.header.stamp = odometry_data_[data].header.stamp;
-          transformation.header.frame_id = "car";
-          transformation.child_frame_id = "wheel_base";
+          transformation.header.frame_id = "wheel_base";
+          transformation.child_frame_id = "car";
 
           tf::Matrix3x3 m;
           tf::Quaternion q;
@@ -1389,7 +1390,7 @@ void ROSThread::EncoderThread()
 
           v[0] = 0;
           v[1] = 0;
-          v[2] = 0.311;
+          v[2] = -0.311;
 
           m[0][0] = 1;
           m[0][1] = 0;
@@ -1412,7 +1413,8 @@ void ROSThread::EncoderThread()
           transformation.pose.pose.orientation.z = q.z();
           transformation.pose.pose.orientation.w = q.w();
 
-          ROSThread::BroadcastTF2(transformation, "car", "wheel_base");
+          ROSThread::BroadcastTF2(transformation, "wheel_base", "car");
+          */
         }
       }
 
