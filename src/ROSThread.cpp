@@ -210,7 +210,7 @@ void ROSThread::Ready()
 
   //check path is right or not
 
-  ifstream f((data_folder_path_+"/sensor_data/data_stamp.csv").c_str());
+  ifstream f((data_folder_path_+"/sensor_data/data_stamp_gt.csv").c_str());
   if(!f.good()){
      cout << "Please check file path. Input path is wrong" << endl;
      return;
@@ -222,7 +222,7 @@ void ROSThread::Ready()
   int64_t stamp;
   //data stamp data load
 
-  fp = fopen((data_folder_path_+"/sensor_data/data_stamp.csv").c_str(),"r");
+  fp = fopen((data_folder_path_+"/sensor_data/data_stamp_gt.csv").c_str(),"r");
   char data_name[50];
   data_stamp_.clear();
   while(fscanf(fp,"%ld,%s\n",&stamp,data_name) == 2){
@@ -1311,7 +1311,43 @@ void ROSThread::AltimeterThread()
       //process
       if(altimeter_data_.find(data) != altimeter_data_.end()){
         altimeter_pub_.publish(altimeter_data_[data]);
-        //ROSThread::BroadcastTF2(odometry_data_[data], "car", "altimeter");
+
+        nav_msgs::Odometry transformation;
+
+        transformation.header.stamp = altimeter_data_[data].header.stamp;
+        transformation.header.frame_id = "car";
+        transformation.child_frame_id = "altimeter";
+
+        tf::Matrix3x3 m;
+        tf::Quaternion q;
+        tf::Vector3 v;
+
+        v[0] = -0.335;
+        v[1] = -0.035;
+        v[2] = 0.78;
+
+        m[0][0] = 1;
+        m[0][1] = 0;
+        m[0][2] = 0;
+        m[1][0] = 0;
+        m[1][1] = 1;
+        m[1][2] = 0;
+        m[2][0] = 0;
+        m[2][1] = 0;
+        m[2][2] = 1;
+
+        m.getRotation(q);
+
+        transformation.pose.pose.position.x = v[0];
+        transformation.pose.pose.position.y = v[1];
+        transformation.pose.pose.position.z = v[2];
+
+        transformation.pose.pose.orientation.x = q.x();
+        transformation.pose.pose.orientation.y = q.y();
+        transformation.pose.pose.orientation.z = q.z();
+        transformation.pose.pose.orientation.w = q.w();
+
+        ROSThread::BroadcastTF2(transformation, "car", "altimeter");
       }
     }
     if(altimter_thread_.active_ == false) return;
